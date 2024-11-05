@@ -1,2 +1,1 @@
-# rss-graph
-Code for "A Graphical Approach for Robust Set Stabilization of Boolean Control Networks with Lowest Time Complexity"
+# Code for "A Graphical Approach for Robust Set Stabilization of Boolean Control Networks with Lowest Time Complexity"
