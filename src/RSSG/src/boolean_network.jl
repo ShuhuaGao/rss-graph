@@ -26,6 +26,13 @@ function evolve(bcn::BCN, x::Integer, u::Integer, ξ::Integer)
     return blk_j[k]  # an integer
 end
 
+function one_step_reachable_set!(rs::AbstractVector{<:Integer}, bcn::BCN, x::Integer, u::Integer)
+    for ξ in 1:bcn.Q
+        rs[ξ] = evolve(bcn, x, u, ξ)
+    end
+    return @view rs[1:bcn.Q]
+end
+
 function evolve(bcn::BCN, x::LogicalVector, u::LogicalVector, ξ::LogicalVector)
     n = evolve(bcn, index(x), index(u), index(ξ))
     return LogicalVector(n, bcn.N)

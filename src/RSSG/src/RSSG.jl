@@ -8,5 +8,6 @@ const LM = LogicalMatrix
 const LV = LogicalVector
 
 include("boolean_network.jl")
+include("ESTG.jl")
 
 end # module RSSG
