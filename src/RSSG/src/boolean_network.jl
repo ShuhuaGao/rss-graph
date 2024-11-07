@@ -48,6 +48,7 @@ If `to_file` is specified, then the BCN model is written into that file using `J
 """
 function calculate_ASSR(fs::AbstractVector{<:Function}, m, q; to_file::String="")::BCN
     n = length(fs)
+    xb′ = BitVector(fill(true, n))
     Q = 2^q
     M = 2^m
     N = 2^n
@@ -56,14 +57,13 @@ function calculate_ASSR(fs::AbstractVector{<:Function}, m, q; to_file::String=""
         for ub in product(repeated([true, false], m)...)
             for ξb in product(repeated([true, false], q)...)
                 # turn each boolean tuple into a logical vector, and multiply the RHS
-                x = LogicalVector(collect(xb))
-                u = LogicalVector(collect(ub))
-                ξ = LogicalVector(collect(ξb))
+                x = LogicalVector(xb)
+                u = LogicalVector(ub)
+                ξ = LogicalVector(ξb)
                 s = ξ * u * x
                 # calculate the LHS with raw Boolean operators
-                xb′ = BitVector()
-                for fi in fs
-                    push!(xb′, fi(xb, ub, ξb))
+                for (i, fi) in enumerate(fs)
+                    xb′[i] = fi(xb, ub, ξb)
                 end
                 x′ = LogicalVector(xb′)
                 # set the logical matrix

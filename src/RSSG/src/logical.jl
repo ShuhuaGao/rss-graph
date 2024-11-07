@@ -14,7 +14,7 @@ end
 # true: [1, 0], false: [0, 1]
 LogicalVector(b::Bool) = b ? LogicalVector(1, 2) : LogicalVector(2, 2)
 
-function LogicalVector(bv::BitVector)
+function LogicalVector(bv::Union{BitVector, Tuple{Vararg{Bool}}})
     r = LogicalVector(1, 1)
     for b in bv
         r = r * LogicalVector(b)

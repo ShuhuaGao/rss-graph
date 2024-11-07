@@ -1,4 +1,6 @@
 """Build ESTG
+- NV: normal vertex 
+- BV: branching vertex
 """
 
 struct NormalVertex
@@ -10,80 +12,43 @@ struct BranchingVertex
     j::Int16    # δ_M^j
 end
 
-struct ESTG{TPN}
+"""
+    ESTG 
+
+Expanded STG. 
+Note that the current integer types allow at most 63 state variables and 15 control variables to save space.
+"""
+struct ESTG
     bcn::BCN
-    Z::Vector{Int64}
-    PN::TPN      # predecessors of a normal vertex 
-    # if we build a complete ESTG, then TPN will be Vector{Vector{Int64}}; otherwise, Dict{Int64, Vector{Int64}}
+    Z::Vector{UInt64}
+    # SB[i, j, ξ] stores the successor (a NV) of BV b_i^j driven by disturbance ξ
+    SB::Array{UInt64, 3}
+    # SN[i, j] stores the successors of NV δ_N^i; only j is recorded (each a branching vertex)
+    SN::BitMatrix
+    # PN[i] stores the predecessors of normal vertex δ_N^i (each a branching vertex as a tuple)
+    PN::Vector{Vector{Tuple{UInt64, UInt16}}}   
+    # the unique predecessor of a BV b_i^j is always δ_N^i; no need to store it explicitly  
+    # in SB SN and PN, a value 0 indicates the deletion of a vertex or edge 
 end
 
-
-function successors!(ss::AbstractVector{BranchingVertex},estg::ESTG, v::NormalVertex)::AbstractVector{BranchingVertex}
-    for j in 1:estg.bcn.M 
-        ss[j] = BranchingVertex(v.i, j)
-    end
-    return @view ss[1:estg.bcn.M]
-end
-
-function successors!(ss::AbstractVector{NormalVertex},estg::ESTG, v::BranchingVertex)::AbstractVector{NormalVertex}
-    i, j = v.i, v.j
-    bcn = estg.bcn
-    for ξ in 1:bcn.Q
-        k = evolve(bcn, i, j, ξ)
-        ss[ξ] = NormalVertex(k)
-    end
-    return @view ss[1:bcn.Q]
-end
-
-"""
-    predecessor(v::NormalVertex)::BranchingVertex
-
-Get the unique predecessor of a normal vertex `v`.
-"""
-function predecessor(v::BranchingVertex)::NormalVertex
-    i = v.i
-    return NormalVertex(i)
-end
-
-"""
-    predecessors(v::NormalVertex, estg::ESTG)::Vector{BranchingVertex}
-
-Get the predecessors of a normal vertex `v`.
-"""
-function predecessors(v::NormalVertex, estg::ESTG)::Vector{BranchingVertex}
-    i = v.i
-    return estg.PN[i]
-end
 
 
 function ESTG(bcn::BCN, Z::AbstractVector{<:Integer})
     M, N, Q = bcn.M, bcn.N, bcn.Q
-    if N == length(Z)   # complete ESTG graph; better use an array 
-        PN = Vector{Vector{BranchingVertex}}()
-        for _ in 1:N
-            push!(PN, Vector{BranchingVertex}())
-        end
-    else    # incomplete ESTG graph; better use a dictionary
-        PN = Dict{Int64, Vector{BranchingVertex}}()
-    end
+    # preallocate memory; because we use vectors, always allocate a complete graph
+    SB = Array{UInt64, 3}(undef, N, M, Q)
+    SN = BitMatrix(undef, N, M)
+    PN = [Vector{Tuple{UInt64, UInt16}}() for _ in 1:N]
 
     for i in Z
         for j in 1:M    # enumerate every control input 
-            # mainly to get the predecessors of a normal vertex
+            SN[i, j] = 1
             for ξ in 1:Q
                 k = evolve(bcn, i, j, ξ)
+                SB[i, j, ξ] = k
                 # one predecessor of δ_N^k is branching (i, j)
-                if PN isa Vector
-                    push!(PN[k], BranchingVertex(i, j))
-                else
-                    if haskey(PN, k)
-                        push!(PN[k], BranchingVertex(i, j))
-                    else
-                        PN[k] = [BranchingVertex(i, j)]
-                    end
-                end
+                push!(PN[k], (i, j))
             end
         end
     end
-    
 end
