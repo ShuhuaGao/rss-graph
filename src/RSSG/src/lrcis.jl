@@ -28,10 +28,8 @@ function compute_LRCIS!(estg::ESTG) :: Set{Int}
         for x̄ in D0
             for (i, j) in estg.PN[x̄]
                 if i ∉ D
-                    # delete the edge in both S and P
+                    # delete the edge δ_N^i --> b_i^j; indicated by setting zero
                     estg.SN[i, j] = 0
-                    # the incoming edge of bij is also deleted
-                    delete!(estg.P[(i, j)], i)
                     if sum(@view estg.SN[i, :]) == 0 # all outgoing edges of δ_N^i are deleted
                         push!(D1, i)
                     end

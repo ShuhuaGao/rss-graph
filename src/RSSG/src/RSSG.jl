@@ -10,5 +10,8 @@ const LV = LogicalVector
 include("boolean_network.jl")
 include("estg.jl")
 include("lrcis.jl")
+include("min_time.jl")
+
+export compute_min_time_control!, get_Tstar, compute_LRCIS!, ESTG
 
 end # module RSSG
