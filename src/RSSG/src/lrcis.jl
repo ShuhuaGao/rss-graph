@@ -1,15 +1,16 @@
 # compute the LRCIS 
 
-function compute_LRCIS!(estg::ESTG) :: Set{Int}
+function compute_LRCIS!(estg::ESTG, Z::Union{AbstractVector{<:Integer}, AbstractSet{<:Integer}}) 
     """
     Calculate the LRCIS for a target set `Z`, which has been used to construct the ESTG.
 
     Returns:
         Set{Int}: the LRCIS, i.e., a set of states
+        Dict{Int, Vector{Int16}}: the control set for each state in IcZ
     
     Warning: this method will change the ESTG `estg` by deleting edges
     """
-    Z = Set(estg.Z)  # Ensure Z is a set
+    Z = Set(Z)  # Ensure Z is a set
     # calculate the one-step reachable set of set Z subject to disturbances
     R1Z = Set{Int}()
     ors = zeros(Int, estg.bcn.Q)
@@ -26,12 +27,14 @@ function compute_LRCIS!(estg::ESTG) :: Set{Int}
     
     while !isempty(D0)
         for x̄ in D0
-            for (i, j) in estg.PN[x̄]
-                if i ∉ D
-                    # delete the edge δ_N^i --> b_i^j; indicated by setting zero
-                    estg.SN[i, j] = 0
-                    if sum(@view estg.SN[i, :]) == 0 # all outgoing edges of δ_N^i are deleted
-                        push!(D1, i)
+            if haskey(estg.PN, x̄)
+                for (i, j) in estg.PN[x̄]
+                    if i ∉ D
+                        # delete the edge δ_N^i --> b_i^j; indicated by setting zero
+                        estg.SN[i, j] = 0
+                        if sum(@view estg.SN[i, :]) == 0 # all outgoing edges of δ_N^i are deleted
+                            push!(D1, i)
+                        end
                     end
                 end
             end
@@ -41,5 +44,19 @@ function compute_LRCIS!(estg::ESTG) :: Set{Int}
         empty!(D1)
     end
 
-    return setdiff(Z, D)
+    IcZ = setdiff(Z, D)
+    U1 = Dict{Int, Vector{Int16}}()
+    for i in IcZ
+        for j in 1:estg.bcn.M
+            if estg.SN[i, j] == 1
+                # j is a feasible control for state i; record it 
+                if haskey(U1, i)    
+                    push!(U1[i], j)
+                else
+                    U1[i] = [j]
+                end
+            end
+        end
+    end
+    return IcZ, U1
 end

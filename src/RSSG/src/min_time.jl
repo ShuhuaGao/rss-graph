@@ -14,13 +14,8 @@ function delete_BN_edge!(estg::ESTG, i, j, k)
             estg.SB[i, j, ξ] = 0
         end
     end
-    PNk = estg.PN[k]
-    np = length(PNk)
-    for idx in 1:np
-        if PNk[idx] == (i, j)
-            PNk[idx] = (0, 0)
-        end
-    end 
+    delete!(estg.PN[k], (i, j))
+    
 end
 
 function compute_min_time_control!(estg::ESTG, IcZ::Union{AbstractVector, AbstractSet})
@@ -28,27 +23,34 @@ function compute_min_time_control!(estg::ESTG, IcZ::Union{AbstractVector, Abstra
     F0 = Set(IcZ)
     F = copy(F0)
     Fs = [copy(F0)] # stores F0, F1, ...
-    U = Dict{UInt64, Vector{UInt16}}()
-    F1 = Set{UInt64}()
+    U = Dict{Int64, Vector{Int16}}()
+    F1 = Set{Int64}()
     # F0 is Fk, and F1 is F_{k+1}
+    to_delete_NB = Tuple{Int64, Int16}[]
     while !isempty(F0)
         empty!(F1)
         for k in F0
+            if !haskey(estg.PN, k)
+                continue
+            end
+            empty!(to_delete_NB)
             for (i, j) in estg.PN[k]
-                if i > 0  # the BN edge b_i^j --> k still exits 
-                    if i ∉ F
-                        delete_BN_edge!(estg, i, j, k)
-                        if sum(@view estg.SB[i, j, :]) == 0  # all successors of b_i^j have been deleted
-                            push!(F1, i)
-                            # append control j to state i's feasible control set
-                            if haskey(U, i)
-                                push!(U[i], j)
-                            else
-                                U[i] = [j]
-                            end
+                if i ∉ F
+                    delete_BN_edge!(estg, i, j, k)
+                    push!(to_delete_NB, (i, j))
+                    if sum(@view estg.SB[i, j, :]) == 0  # all successors of b_i^j have been deleted
+                        push!(F1, i)
+                        # append control j to state i's feasible control set
+                        if haskey(U, i)
+                            push!(U[i], j)
+                        else
+                            U[i] = [j]
                         end
                     end
                 end
+            end
+            for (i, j) in to_delete_NB
+                delete!(estg.PN[k], (i, j))
             end
         end
         # get a new set F1 expanding the boundary of stabilization domain 
@@ -62,7 +64,7 @@ function compute_min_time_control!(estg::ESTG, IcZ::Union{AbstractVector, Abstra
 end
 
 
-function get_Tstar(i::Integer, Fs::AbstractVector{Set})::Int
+function get_Tstar(i::Integer, Fs::AbstractVector{<:Set})::Int
     """After obtaining `Fs` with `compute_min_time_control`, retrieve the minimum stabilization time 
     of a state `i`.
 
